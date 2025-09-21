@@ -2,15 +2,22 @@ import { useState } from "react";
 import { Header } from "@/components/Header";
 import { InvoiceDashboard } from "@/components/InvoiceDashboard";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
+import { LoginForm } from "@/components/LoginForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { mockDashboardInvoices, mockFullInvoice, type DashboardInvoice, type FullInvoice } from "@/data/mockInvoices";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<'dashboard' | 'invoice'>('dashboard');
   const [selectedInvoice, setSelectedInvoice] = useState<FullInvoice | null>(null);
   const { toast } = useToast();
+
+  const handleLogin = (credentials: { username: string; password: string }) => {
+    // In production, this would validate against Supabase Auth
+    setIsAuthenticated(true);
+  };
 
   const handleViewInvoice = (dashboardInvoice: DashboardInvoice) => {
     // In a real app, you would fetch the full invoice data from your database
@@ -51,6 +58,11 @@ const Index = () => {
     setCurrentView('dashboard');
     setSelectedInvoice(null);
   };
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">

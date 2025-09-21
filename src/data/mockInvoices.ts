@@ -3,38 +3,40 @@
 export interface InvoiceItem {
   id: string;
   description: string;
-  quantity: number;
   rate: number;
+  hoursDays: number;
   amount: number;
 }
 
 export interface FullInvoice {
   id: string;
   invoiceNumber: string;
+  employeeId: string;
   date: string;
   dueDate: string;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
-  client: {
-    name: string;
+  billedTo: {
+    companyName: string;
+    address: string;
+    contactPerson: string;
     email: string;
-    address: string;
-    city: string;
-    postalCode: string;
-    country: string;
   };
-  company: {
-    name: string;
+  billedFrom: {
+    employeeName: string;
     address: string;
-    city: string;
-    postalCode: string;
-    country: string;
     email: string;
     phone: string;
   };
-  items: InvoiceItem[];
+  services: InvoiceItem[];
   subtotal: number;
-  tax: number;
+  taxesFees: number;
   total: number;
+  paymentInfo: {
+    bankName: string;
+    accountName: string;  
+    accountNumber: string;
+    swiftBicCode: string;
+  };
   notes?: string;
 }
 
@@ -48,15 +50,12 @@ export interface DashboardInvoice {
   dueDate: string;
 }
 
-// Mock company data
-export const mockCompany = {
-  name: "InvoicePro Ltd.",
-  address: "123 Business Street",
-  city: "New York",
-  postalCode: "10001",
-  country: "United States",
-  email: "contact@invoicepro.com",
-  phone: "+1 (555) 123-4567"
+// Mock payment info
+export const mockPaymentInfo = {
+  bankName: "First National Bank",
+  accountName: "InvoicePro Ltd.",
+  accountNumber: "1234567890",
+  swiftBicCode: "FNBKUS33XXX"
 };
 
 // Mock invoices for dashboard
@@ -103,43 +102,48 @@ export const mockDashboardInvoices: DashboardInvoice[] = [
 export const mockFullInvoice: FullInvoice = {
   id: "1",
   invoiceNumber: "INV-2024-001",
+  employeeId: "EMP-12345",
   date: "January 15, 2024",
   dueDate: "February 15, 2024",
   status: "paid",
-  client: {
-    name: "Acme Corporation",
-    email: "accounting@acme.com",
-    address: "456 Corporate Avenue",
-    city: "Los Angeles",
-    postalCode: "90210",
-    country: "United States"
+  billedTo: {
+    companyName: "Acme Corporation",
+    address: "456 Corporate Avenue, Los Angeles, CA 90210",
+    contactPerson: "John Smith",
+    email: "accounting@acme.com"
   },
-  company: mockCompany,
-  items: [
+  billedFrom: {
+    employeeName: "Sarah Johnson",
+    address: "123 Professional Street, New York, NY 10001",
+    email: "sarah.johnson@invoicepro.com",
+    phone: "+1 (555) 123-4567"
+  },
+  services: [
     {
       id: "1",
-      description: "Web Development Services - Q1 2024",
-      quantity: 40,
-      rate: 50.00,
-      amount: 2000.00
+      description: "Web Development Services - Frontend Development",
+      rate: 85.00,
+      hoursDays: 40,
+      amount: 3400.00
     },
     {
       id: "2",
-      description: "UI/UX Design Consultation",
-      quantity: 8,
-      rate: 75.00,
-      amount: 600.00
+      description: "UI/UX Design and Consultation",
+      rate: 95.00,
+      hoursDays: 16,
+      amount: 1520.00
     },
     {
       id: "3",
-      description: "Project Management",
-      quantity: 20,
-      rate: 45.00,
-      amount: 900.00
+      description: "Project Management and Coordination",
+      rate: 75.00,
+      hoursDays: 24,
+      amount: 1800.00
     }
   ],
-  subtotal: 3500.00,
-  tax: 280.00,
-  total: 3780.00,
-  notes: "Payment terms: Net 30 days. Late payments may incur additional fees."
+  subtotal: 6720.00,
+  taxesFees: 537.60,
+  total: 7257.60,
+  paymentInfo: mockPaymentInfo,
+  notes: "Payment terms: Net 30 days. Late payments may incur additional fees. Please reference invoice number in all correspondence."
 };
