@@ -1,18 +1,30 @@
 import { Button } from "@/components/ui/button";
-import { FileText, Plus, Download, Mail } from "lucide-react";
+import { FileText, Plus, Download, Mail, Menu } from "lucide-react";
 
 interface HeaderProps {
   onCreateInvoice?: () => void;
   onDownload?: () => void;
   onSendEmail?: () => void;
+  onMenuClick?: () => void;
+  showMenuButton?: boolean;
 }
 
-export const Header = ({ onCreateInvoice, onDownload, onSendEmail }: HeaderProps) => {
+export const Header = ({ onCreateInvoice, onDownload, onSendEmail, onMenuClick, showMenuButton }: HeaderProps) => {
   return (
     <header className="bg-background border-b border-border shadow-soft">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
+            {showMenuButton && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onMenuClick}
+                className="p-2"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             <div className="p-2 bg-gradient-primary rounded-lg">
               <FileText className="h-6 w-6 text-white" />
             </div>

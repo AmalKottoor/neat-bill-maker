@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { InvoiceDashboard } from "@/components/InvoiceDashboard";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
 import { LoginForm } from "@/components/LoginForm";
+import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { mockDashboardInvoices, mockFullInvoice, type DashboardInvoice, type FullInvoice } from "@/data/mockInvoices";
@@ -12,7 +14,9 @@ const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<'dashboard' | 'invoice'>('dashboard');
   const [selectedInvoice, setSelectedInvoice] = useState<FullInvoice | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleLogin = (credentials: { username: string; password: string }) => {
     // In production, this would validate against Supabase Auth
@@ -59,6 +63,11 @@ const Index = () => {
     setSelectedInvoice(null);
   };
 
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setSidebarOpen(false);
+  };
+
   // Show login form if not authenticated
   if (!isAuthenticated) {
     return <LoginForm onLogin={handleLogin} />;
@@ -66,10 +75,17 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Sidebar 
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onLogout={handleLogout}
+      />
       <Header 
         onCreateInvoice={handleCreateInvoice}
         onDownload={currentView === 'invoice' ? () => handleDownload() : undefined}
         onSendEmail={currentView === 'invoice' ? () => handleSendEmail() : undefined}
+        onMenuClick={() => setSidebarOpen(true)}
+        showMenuButton={true}
       />
       
       <main className="container mx-auto px-4 py-8">
