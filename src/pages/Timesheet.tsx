@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Clock, Users, TrendingUp } from "lucide-react";
+import { Clock, Users, TrendingUp, Moon, Sun } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "next-themes";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))'];
 
@@ -28,13 +30,36 @@ const projectDistribution = [
 
 const Timesheet = () => {
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [employeeName, setEmployeeName] = useState("");
   const [date, setDate] = useState("");
   const [hours, setHours] = useState("");
   const [project, setProject] = useState("");
   const [description, setDescription] = useState("");
+  const [timesheets, setTimesheets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchTimesheets();
+  }, []);
+
+  const fetchTimesheets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('timesheets')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+      setTimesheets(data || []);
+    } catch (error) {
+      console.error('Error fetching timesheets:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!employeeName || !date || !hours || !project) {
@@ -46,28 +71,84 @@ const Timesheet = () => {
       return;
     }
 
-    toast({
-      title: "Timesheet Submitted",
-      description: `Timesheet for ${employeeName} has been recorded successfully.`,
-    });
+    try {
+      const { error } = await supabase
+        .from('timesheets')
+        .insert({
+          employee_name: employeeName,
+          date: date,
+          hours_worked: parseFloat(hours),
+          project: project,
+          description: description
+        });
 
-    // Reset form
-    setEmployeeName("");
-    setDate("");
-    setHours("");
-    setProject("");
-    setDescription("");
+      if (error) throw error;
+
+      toast({
+        title: "Timesheet Submitted",
+        description: `Timesheet for ${employeeName} has been recorded successfully.`,
+      });
+
+      // Reset form
+      setEmployeeName("");
+      setDate("");
+      setHours("");
+      setProject("");
+      setDescription("");
+
+      // Refresh data
+      fetchTimesheets();
+    } catch (error) {
+      console.error('Error submitting timesheet:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit timesheet. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const totalHours = employeeHoursData.reduce((acc, curr) => acc + curr.hours, 0);
-  const averageHours = (totalHours / employeeHoursData.length).toFixed(1);
+  // Calculate analytics from real data
+  const employeeHoursData = timesheets.reduce((acc: any[], timesheet) => {
+    const existing = acc.find(item => item.name === timesheet.employee_name);
+    if (existing) {
+      existing.hours += parseFloat(timesheet.hours_worked);
+    } else {
+      acc.push({ name: timesheet.employee_name, hours: parseFloat(timesheet.hours_worked) });
+    }
+    return acc;
+  }, []);
+
+  const projectDistribution = timesheets.reduce((acc: any[], timesheet) => {
+    const existing = acc.find(item => item.name === timesheet.project);
+    if (existing) {
+      existing.value += parseFloat(timesheet.hours_worked);
+    } else {
+      acc.push({ name: timesheet.project, value: parseFloat(timesheet.hours_worked) });
+    }
+    return acc;
+  }, []);
+
+  const totalHours = timesheets.reduce((acc, curr) => acc + parseFloat(curr.hours_worked || 0), 0);
+  const averageHours = employeeHoursData.length > 0 ? (totalHours / employeeHoursData.length).toFixed(1) : '0';
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-foreground">Employee Timesheet Portal</h1>
-          <p className="text-sm text-muted-foreground">Track and manage employee work hours</p>
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Employee Timesheet Portal</h1>
+            <p className="text-sm text-muted-foreground">Track and manage employee work hours</p>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label="Toggle theme"
+          >
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </Button>
         </div>
       </header>
 
@@ -102,8 +183,8 @@ const Timesheet = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{employeeHoursData.length}</div>
-              <p className="text-xs text-muted-foreground">Tracked this week</p>
+              <div className="text-2xl font-bold">{employeeHoursData.length || 0}</div>
+              <p className="text-xs text-muted-foreground">Tracked employees</p>
             </CardContent>
           </Card>
         </div>
@@ -116,21 +197,27 @@ const Timesheet = () => {
               <CardDescription>Weekly hours by employee</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={employeeHoursData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} />
-                  <YAxis stroke="hsl(var(--foreground))" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }} 
-                  />
-                  <Bar dataKey="hours" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {employeeHoursData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={employeeHoursData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} />
+                    <YAxis stroke="hsl(var(--foreground))" fontSize={12} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                    <Bar dataKey="hours" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  No data available. Submit a timesheet to see analytics.
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -141,32 +228,38 @@ const Timesheet = () => {
               <CardDescription>Total hours per project</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={projectDistribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {projectDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }} 
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              {projectDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={projectDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {projectDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  No data available. Submit a timesheet to see project distribution.
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
